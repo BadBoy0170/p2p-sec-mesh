@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package protos;
+
+option go_package = "github.com/badboy17/p2p-sec-mesh/gen/go";
+
+// Service for the Python AI Sidecar
+service AISidecar {
+  rpc AnalyzeTelemetry(TelemetryPayload) returns (ThreatAnalysis);
+}
+
+// Service for P2P communication
+service P2P {
+    rpc ShareQuarantineVote(QuarantineVote) returns (VoteAck);
+}
+
+
+message TelemetryPayload {
+  string node_id = 1;
+  float cpu_usage = 2;
+  float mem_usage = 3;
+  repeated CriticalEvent events = 4;
+}
+
+message CriticalEvent {
+    enum EventType {
+        UNKNOWN = 0;
+        HONEYPOT_TRIPPED = 1;
+    }
+    EventType type = 1;
+    string source_ip = 2;
+    int64 timestamp = 3;
+}
+
+message ThreatAnalysis {
+  string node_id = 1;
+  float threat_score = 2;
+}
+
+message QuarantineVote {
+    bytes node_id = 1; // Node being voted on
+    bytes voter_id = 2; // Node that is voting
+    int64 timestamp = 3;
+    bytes signature = 4;
+}
+
+message VoteAck {
+    bool received = 1;
+}

@@ -1,0 +1,194 @@
+################################################################################
+#  P2P Zero-Trust Security Mesh — Docker Compose
+#
+#  Services:
+#    coordinator  — HTTP REST peer registry (port 8090)
+#    ollama       — Local LLM engine (port 11434)
+#    node-a       — Peer node + AI sidecar (P2P: 9001, honeypot: 2222/8888)
+#    node-b       — Peer node + AI sidecar (P2P: 9002, honeypot: 2223/8889)
+#    node-c       — Peer node + AI sidecar (P2P: 9003, honeypot: 2224/8890)
+#
+#  Each "node-X" is actually two containers sharing a network alias:
+#    - node-X-go  : the Go peer node binary
+#    - node-X-ai  : the Python AI sidecar
+#  They communicate via the shared mesh network using the sidecar alias.
+################################################################################
+
+version: "3.9"
+
+networks:
+  mesh:
+    driver: bridge
+
+volumes:
+  ollama_data:
+
+# ─── Coordinator ──────────────────────────────────────────────────────────────
+services:
+  coordinator:
+    build:
+      context: .
+      dockerfile: coordinator/Dockerfile
+    container_name: coordinator
+    networks:
+      - mesh
+    ports:
+      - "8090:8090"
+    environment:
+      COORDINATOR_PORT: "8090"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8090/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+# ─── Ollama LLM Engine ────────────────────────────────────────────────────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    networks:
+      - mesh
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+# ─── Node A ───────────────────────────────────────────────────────────────────
+  node-a-ai:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    container_name: node-a-ai
+    networks:
+      mesh:
+        aliases: [node-a-sidecar]
+    environment:
+      SIDECAR_PORT:  "50052"
+      OLLAMA_URL:    "http://ollama:11434"
+      OLLAMA_MODEL:  "llama3"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  node-a-go:
+    build:
+      context: .
+      dockerfile: peer-node/Dockerfile
+    container_name: node-a-go
+    networks:
+      - mesh
+    ports:
+      - "9001:9000"
+      - "2222:2222"   # honeypot SSH — exposed for demo
+    environment:
+      NODE_ID:          "node-a"
+      NODE_HOSTNAME:    "node-a-go"
+      P2P_PORT:         "9000"
+      COORDINATOR_URL:  "http://coordinator:8090"
+      SIDECAR_ADDR:     "node-a-sidecar:50052"
+      CERT_FILE:        "/etc/certs/peer.pem"
+      KEY_FILE:         "/etc/certs/peer.key"
+      CA_FILE:          "/etc/certs/ca.pem"
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      node-a-ai:
+        condition: service_started
+    restart: unless-stopped
+
+# ─── Node B ───────────────────────────────────────────────────────────────────
+  node-b-ai:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    container_name: node-b-ai
+    networks:
+      mesh:
+        aliases: [node-b-sidecar]
+    environment:
+      SIDECAR_PORT:  "50052"
+      OLLAMA_URL:    "http://ollama:11434"
+      OLLAMA_MODEL:  "llama3"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  node-b-go:
+    build:
+      context: .
+      dockerfile: peer-node/Dockerfile
+    container_name: node-b-go
+    networks:
+      - mesh
+    ports:
+      - "9002:9000"
+      - "2223:2222"   # honeypot SSH
+    environment:
+      NODE_ID:          "node-b"
+      NODE_HOSTNAME:    "node-b-go"
+      P2P_PORT:         "9000"
+      COORDINATOR_URL:  "http://coordinator:8090"
+      SIDECAR_ADDR:     "node-b-sidecar:50052"
+      CERT_FILE:        "/etc/certs/peer.pem"
+      KEY_FILE:         "/etc/certs/peer.key"
+      CA_FILE:          "/etc/certs/ca.pem"
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      node-b-ai:
+        condition: service_started
+    restart: unless-stopped
+
+# ─── Node C ───────────────────────────────────────────────────────────────────
+  node-c-ai:
+    build:
+      context: ./analyzer
+      dockerfile: Dockerfile
+    container_name: node-c-ai
+    networks:
+      mesh:
+        aliases: [node-c-sidecar]
+    environment:
+      SIDECAR_PORT:  "50052"
+      OLLAMA_URL:    "http://ollama:11434"
+      OLLAMA_MODEL:  "llama3"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: unless-stopped
+
+  node-c-go:
+    build:
+      context: .
+      dockerfile: peer-node/Dockerfile
+    container_name: node-c-go
+    networks:
+      - mesh
+    ports:
+      - "9003:9000"
+      - "2224:2222"   # honeypot SSH
+    environment:
+      NODE_ID:          "node-c"
+      NODE_HOSTNAME:    "node-c-go"
+      P2P_PORT:         "9000"
+      COORDINATOR_URL:  "http://coordinator:8090"
+      SIDECAR_ADDR:     "node-c-sidecar:50052"
+      CERT_FILE:        "/etc/certs/peer.pem"
+      KEY_FILE:         "/etc/certs/peer.key"
+      CA_FILE:          "/etc/certs/ca.pem"
+    depends_on:
+      coordinator:
+        condition: service_healthy
+      node-c-ai:
+        condition: service_started
+    restart: unless-stopped
