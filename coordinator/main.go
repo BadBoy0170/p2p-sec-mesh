@@ -20,12 +20,24 @@ type PeerInfo struct {
 
 // Registry manages the active peer list.
 type Registry struct {
-	mu    sync.RWMutex
-	peers map[string]PeerInfo
+	mu        sync.RWMutex
+	peers     map[string]PeerInfo
+	telemetry map[string]NodeTelemetry // For GUI dashboard
+}
+
+// NodeTelemetry holds the latest state reported by a peer for the GUI
+type NodeTelemetry struct {
+	NodeID        string   `json:"node_id"`
+	Status        string   `json:"status"` // "healthy", "attacked", "quarantined"
+	Peers         []string `json:"peers"`
+	LastReportedAt time.Time `json:"last_reported_at"`
 }
 
 func NewRegistry() *Registry {
-	r := &Registry{peers: make(map[string]PeerInfo)}
+	r := &Registry{
+		peers:     make(map[string]PeerInfo),
+		telemetry: make(map[string]NodeTelemetry),
+	}
 	go r.pruneLoop()
 	return r
 }
@@ -99,6 +111,47 @@ func (r *Registry) handlePeers(w http.ResponseWriter, req *http.Request) {
 	_ = json.NewEncoder(w).Encode(list)
 }
 
+// POST /api/telemetry — Nodes report their status here
+func (r *Registry) handleTelemetry(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	var body NodeTelemetry
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	
+	r.mu.Lock()
+	body.LastReportedAt = time.Now()
+	r.telemetry[body.NodeID] = body
+	r.mu.Unlock()
+
+	w.WriteHeader(http.StatusOK)
+}
+
+// GET /api/topology — Returns the graph state for the Vis.js frontend
+func (r *Registry) handleTopology(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	// Add CORS headers so frontend can read it if served from somewhere else
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	
+	r.mu.RLock()
+	var nodes []NodeTelemetry
+	for _, t := range r.telemetry {
+		// Prune old telemetry (older than 10s)
+		if time.Since(t.LastReportedAt) < 10*time.Second {
+			nodes = append(nodes, t)
+		}
+	}
+	r.mu.RUnlock()
+
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{
+		"nodes": nodes,
+	})
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -116,9 +169,14 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/register", reg.handleRegister)
 	mux.HandleFunc("/peers", reg.handlePeers)
+	mux.HandleFunc("/api/telemetry", reg.handleTelemetry)
+	mux.HandleFunc("/api/topology", reg.handleTopology)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "ok")
 	})
+	
+	// Serve the static HTML dashboard
+	mux.Handle("/", http.FileServer(http.Dir("./coordinator")))
 
 	addr := ":" + port
 	log.Printf("[COORDINATOR] Listening on %s", addr)

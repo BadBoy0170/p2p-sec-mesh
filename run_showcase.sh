@@ -19,8 +19,8 @@ go build -o /tmp/peer-node ./peer-node
 mkdir -p /tmp/mesh-logs
 rm -f /tmp/mesh-logs/*.log
 
-echo "🚀 Starting Coordinator (The Phonebook)..."
-COORDINATOR_PORT=8090 go run ./coordinator > /tmp/mesh-logs/coordinator.log 2>&1 &
+echo "🚀 Starting Coordinator and Web Dashboard..."
+COORDINATOR_PORT=8090 /tmp/coordinator-bin > /tmp/mesh-logs/coordinator.log 2>&1 &
 sleep 2
 
 echo "🧠 Starting 5 AI Sidecars (Connecting to Ollama)..."
@@ -78,7 +78,11 @@ echo "Run this command:"
 echo ""
 echo "    echo 'SCAN' | nc -w 1 localhost 2224"
 echo ""
-echo "Then, immediately watch the logs of Node 4 and Node 1 to see the AI quarantine kick in:"
+echo "📺 THE VISUAL DASHBOARD:"
+echo "Open your web browser to: http://localhost:8090"
+echo "You will see the network graph reacting in real-time!"
+echo ""
+echo "Or, watch the raw logs of Node 4 and Node 1 to see the AI quarantine kick in:"
 echo "    tail -f /tmp/mesh-logs/node_4_profile-service.log"
 echo "    tail -f /tmp/mesh-logs/node_1_api-gateway.log"
 echo ""

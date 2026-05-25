@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Zero-Trust Security Mesh Dashboard</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style type="text/css">
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #header {
+            padding: 20px 40px;
+            background-color: #1e293b;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.5px; }
+        .legend {
+            display: flex;
+            gap: 20px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            font-size: 0.9rem;
+        }
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        #mynetwork {
+            flex-grow: 1;
+            width: 100%;
+            height: 100%;
+        }
+        .status-healthy { background-color: #22c55e; }
+        .status-attacked { background-color: #f97316; }
+        .status-quarantined { background-color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Zero-Trust Mesh Topology</h1>
+        <div class="legend">
+            <div class="legend-item"><div class="dot status-healthy"></div> Healthy</div>
+            <div class="legend-item"><div class="dot status-attacked"></div> Under Attack</div>
+            <div class="legend-item"><div class="dot status-quarantined"></div> Quarantined</div>
+        </div>
+    </div>
+    <div id="mynetwork"></div>
+
+    <script type="text/javascript">
+        // Vis.js setup
+        var nodes = new vis.DataSet([]);
+        var edges = new vis.DataSet([]);
+        var container = document.getElementById('mynetwork');
+        var data = { nodes: nodes, edges: edges };
+        
+        var options = {
+            nodes: {
+                shape: 'dot',
+                size: 20,
+                font: { size: 14, color: '#f8fafc', face: 'Inter' },
+                borderWidth: 2,
+                shadow: true
+            },
+            edges: {
+                width: 2,
+                color: { inherit: false, color: '#475569' },
+                smooth: { type: 'continuous' }
+            },
+            physics: {
+                forceAtlas2Based: {
+                    gravitationalConstant: -50,
+                    centralGravity: 0.01,
+                    springConstant: 0.08,
+                    springLength: 150,
+                    damping: 0.4,
+                    avoidOverlap: 0.5
+                },
+                solver: 'forceAtlas2Based',
+                stabilization: { iterations: 150 }
+            }
+        };
+        var network = new vis.Network(container, data, options);
+
+        // Fetch loop
+        async function fetchTopology() {
+            try {
+                const response = await fetch('/api/topology');
+                const result = await response.json();
+                const telemetryNodes = result.nodes || [];
+
+                let currentNodes = nodes.getIds();
+                let newEdges = [];
+
+                telemetryNodes.forEach(t => {
+                    // Determine color
+                    let color = { background: '#22c55e', border: '#166534' }; // healthy
+                    if (t.status === 'attacked') {
+                        color = { background: '#f97316', border: '#9a3412' }; // attacked
+                    } else if (t.status === 'quarantined') {
+                        color = { background: '#ef4444', border: '#991b1b' }; // quarantined
+                    }
+
+                    // Update or Add Node
+                    if (nodes.get(t.node_id)) {
+                        nodes.update({ id: t.node_id, label: t.node_id, color: color });
+                    } else {
+                        nodes.add({ id: t.node_id, label: t.node_id, color: color });
+                    }
+
+                    // Build edges
+                    if (t.status !== 'quarantined') {
+                        (t.peers || []).forEach(peer => {
+                            // Ensure one directional string for edge ID to avoid duplicates
+                            let edgeId = [t.node_id, peer].sort().join('-');
+                            newEdges.push({ id: edgeId, from: t.node_id, to: peer });
+                        });
+                    }
+                });
+
+                // Remove stale nodes
+                let validIds = telemetryNodes.map(t => t.node_id);
+                currentNodes.forEach(id => {
+                    if (!validIds.includes(id)) {
+                        nodes.remove(id);
+                    }
+                });
+
+                // Sync edges
+                let currentEdges = edges.getIds();
+                let validEdgeIds = newEdges.map(e => e.id);
+                
+                // Add new
+                newEdges.forEach(e => {
+                    if (!edges.get(e.id)) {
+                        edges.add(e);
+                    }
+                });
+
+                // Remove stale
+                currentEdges.forEach(id => {
+                    if (!validEdgeIds.includes(id)) {
+                        edges.remove(id);
+                    }
+                });
+
+            } catch (err) {
+                console.error("Failed to fetch topology:", err);
+            }
+        }
+
+        // Poll every 2 seconds
+        setInterval(fetchTopology, 2000);
+        fetchTopology();
+    </script>
+</body>
+</html>
