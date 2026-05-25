@@ -27,9 +27,11 @@ type Registry struct {
 
 // NodeTelemetry holds the latest state reported by a peer for the GUI
 type NodeTelemetry struct {
-	NodeID        string   `json:"node_id"`
-	Status        string   `json:"status"` // "healthy", "attacked", "quarantined"
-	Peers         []string `json:"peers"`
+	NodeID         string    `json:"node_id"`
+	Status         string    `json:"status"` // "healthy", "attacked", "quarantined"
+	Peers          []string  `json:"peers"`
+	CpuPct         float64   `json:"cpu_pct"`
+	RamPct         float64   `json:"ram_pct"`
 	LastReportedAt time.Time `json:"last_reported_at"`
 }
 
