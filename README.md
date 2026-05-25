@@ -49,7 +49,7 @@ Each node runs two processes (Sidecar Architecture):
 
 ```
                                           ┌─────────────────────┐
- Attacker ──► port 2222 ──► Honeypot ──►│ TelemetryEvent      │
+ Attacker ──► port 2222 ──► Honeypot ──►  │ TelemetryEvent      │
                                           │ (core.EventCh)      │
                                           └────────┬────────────┘
                                                    │ gRPC
@@ -66,7 +66,7 @@ Each node runs two processes (Sidecar Architecture):
                                                    │ broadcast
                                     ┌──────────────┴──────────────┐
                                ┌────▼────┐                   ┌────▼────┐
-                               │ Node A  │  verify signature  │ Node C  │
+                               │ Node A  │  verify signature │ Node C  │
                                │ sever ✓ │                   │ sever ✓ │
                                └─────────┘                   └─────────┘
 ```
@@ -199,17 +199,17 @@ nc localhost 2223
 
 Watch the logs:
 ```
-node-b-go  | [HONEYPOT] 🚨 INTRUSION DETECTED on mock-SSH port 2222 from 172.20.0.1
-node-b-ai  | [SIDECAR] Received telemetry from node: <node-b-id>
-node-b-ai  | [SIDECAR] ✅ Threat score for node-b: 9/10
-node-b-go  | [SIDECAR] 🚨 CRITICAL THREAT (9.0) — initiating self-quarantine broadcast
-node-b-go  | [GOSSIP]  📢 Broadcasting quarantine vote for <id> to 2 peer(s)
-node-a-go  | [GOSSIP]  ✅ Vote 1 for quarantine of <id> (from <id>)
-node-a-go  | [GOSSIP]  🔴 QUARANTINING NODE <id> — severing all connections
-node-c-go  | [GOSSIP]  🔴 QUARANTINING NODE <id> — severing all connections
+node-b-go  | [HONEYPOT]   INTRUSION DETECTED on mock-SSH port 2222 from 172.20.0.1
+node-b-ai  | [SIDECAR]    Received telemetry from node: <node-b-id>
+node-b-ai  | [SIDECAR]    Threat score for node-b: 9/10
+node-b-go  | [SIDECAR]    CRITICAL THREAT (9.0) — initiating self-quarantine broadcast
+node-b-go  | [GOSSIP]     Broadcasting quarantine vote for <id> to 2 peer(s)
+node-a-go  | [GOSSIP]     Vote 1 for quarantine of <id> (from <id>)
+node-a-go  | [GOSSIP]     QUARANTINING NODE <id> — severing all connections
+node-c-go  | [GOSSIP]     QUARANTINING NODE <id> — severing all connections
 ```
 
-Node B is isolated. Nodes A and C remain connected to each other. ✅
+Node B is isolated. Nodes A and C remain connected to each other. 
 
 ### 5. Verify the network healed
 
@@ -312,5 +312,3 @@ A quarantined node that has already lost connectivity can't vote. Requiring unan
 
 ## Author
 
-**BadBoy0170** (Rajveer Shikhawat)  
-[github.com/BadBoy0170](https://github.com/BadBoy0170)
