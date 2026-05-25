@@ -35,12 +35,8 @@ export class NetworkGraph {
                 borderWidth: 2
             },
             edges: {
-                width: 3,
-                smooth: { 
-                    type: 'cubicBezier',  // Smooth flowing curves
-                    forceDirection: 'horizontal',
-                    roundness: 0.6
-                },
+                width: 1,
+                smooth: false, // HUGE performance boost for 400+ edges
                 arrows: {
                     to: { enabled: true, scaleFactor: 0.3, type: 'arrow' }
                 }
@@ -61,6 +57,12 @@ export class NetworkGraph {
         };
 
         this.network = new vis.Network(this.container, data, options);
+
+        // OPTIMIZATION: Stop calculating physics after the graph settles.
+        // This prevents the browser from lagging when there are 400+ connections.
+        this.network.on("stabilizationIterationsDone", () => {
+            this.network.setOptions( { physics: false } );
+        });
     }
 
     setFilter(term) {
@@ -71,23 +73,21 @@ export class NetworkGraph {
         // Apply filter
         const activeNodes = telemetryNodes.filter(t => !this.filterTerm || t.node_id.toLowerCase().includes(this.filterTerm));
         const validNodeIds = new Set(activeNodes.map(t => t.node_id));
-        const newEdges = [];
-
-        // In a true LR flow without physics, we assign arbitrary levels to simulate source/dest
-        // We'll put 'api-gateway' at level 0, others at level 1 or 2 based on connections
         
+        const newNodesToUpdate = [];
+        const newEdgesToUpdate = [];
+
         activeNodes.forEach(t => {
             const colors = this.theme[t.status] || this.theme.healthy;
-
             const cpu = t.cpu_pct ? t.cpu_pct.toFixed(1) : "0.0";
             const ram = t.ram_pct ? t.ram_pct.toFixed(1) : "0.0";
             
-            // Assign level dynamically based on node name for better visual flow
             let nodeLevel = 1;
             if (t.node_id.includes("gateway")) nodeLevel = 0;
             if (t.node_id.includes("transaction")) nodeLevel = 2;
 
-            this.nodes.update({
+            // Batch Node creation
+            newNodesToUpdate.push({
                 id: t.node_id,
                 label: `<b>${t.node_id}</b>\n${t.status.toUpperCase()} | CPU: ${cpu}% | RAM: ${ram}%`,
                 level: nodeLevel,
@@ -104,7 +104,7 @@ export class NetworkGraph {
                     const edgeId = [t.node_id, peer].sort().join('-');
                     const edgeColor = t.status === 'attacked' ? this.theme.edgeWarning : this.theme.edgeNormal;
                     
-                    newEdges.push({
+                    newEdgesToUpdate.push({
                         id: edgeId,
                         from: t.node_id,
                         to: peer,
@@ -114,17 +114,17 @@ export class NetworkGraph {
             }
         });
 
-        // Cleanup stale nodes
-        this.nodes.getIds().forEach(id => {
-            if (!validNodeIds.has(id)) this.nodes.remove(id);
-        });
+        // Execute a single BATCH UPDATE. (Doing this in a loop causes heavy browser lag!)
+        this.nodes.update(newNodesToUpdate);
+        this.edges.update(newEdgesToUpdate);
 
-        // Upsert and cleanup edges
-        const validEdgeIds = new Set(newEdges.map(e => e.id));
-        newEdges.forEach(e => this.edges.update(e));
-        
-        this.edges.getIds().forEach(id => {
-            if (!validEdgeIds.has(id)) this.edges.remove(id);
-        });
+        // Cleanup stale nodes
+        const nodesToRemove = this.nodes.getIds().filter(id => !validNodeIds.has(id));
+        if (nodesToRemove.length > 0) this.nodes.remove(nodesToRemove);
+
+        // Cleanup stale edges
+        const validEdgeIds = new Set(newEdgesToUpdate.map(e => e.id));
+        const edgesToRemove = this.edges.getIds().filter(id => !validEdgeIds.has(id));
+        if (edgesToRemove.length > 0) this.edges.remove(edgesToRemove);
     }
 }

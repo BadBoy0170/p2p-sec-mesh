@@ -5,7 +5,7 @@ class DashboardController {
     constructor() {
         this.api = new ApiService('/api/topology');
         this.graph = new NetworkGraph('network-container');
-        this.pollInterval = 2000;
+        this.pollInterval = 5000; // Poll every 5s instead of 2s to save CPU
         
         // DOM Elements
         this.ui = {
