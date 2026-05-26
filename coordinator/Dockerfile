@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /app
 
@@ -23,7 +23,16 @@ FROM alpine:3.19
 
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-COPY --from=builder /coordinator /usr/local/bin/coordinator
+COPY --from=builder /coordinator        /usr/local/bin/coordinator
+
+# The Go FileServer serves ./coordinator/ relative to the working directory.
+# We place static assets under /app/coordinator/ and run from /app.
+WORKDIR /app
+COPY coordinator/index.html  ./coordinator/
+COPY coordinator/styles.css  ./coordinator/
+COPY coordinator/js/         ./coordinator/js/
+
+RUN chown -R appuser:appgroup /app
 
 USER appuser
 EXPOSE 8090

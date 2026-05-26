@@ -35,6 +35,17 @@ type NodeTelemetry struct {
 	LastReportedAt time.Time `json:"last_reported_at"`
 }
 
+// AIReport holds a structured threat event submitted by a peer node.
+type AIReport struct {
+	NodeID     string    `json:"node_id"`
+	Score      float64   `json:"score"`
+	EventType  string    `json:"event_type"`
+	SourceIP   string    `json:"source_ip"`
+	Decision   string    `json:"decision"`
+	Method     string    `json:"method"` // "ai" or "rule-based"
+	ReportedAt time.Time `json:"reported_at"`
+}
+
 func NewRegistry() *Registry {
 	r := &Registry{
 		peers:     make(map[string]PeerInfo),
@@ -42,6 +53,24 @@ func NewRegistry() *Registry {
 	}
 	go r.pruneLoop()
 	return r
+}
+
+// ── AI Report store ───────────────────────────────────────────────────────────
+
+var (
+	reportsMu sync.RWMutex
+	reports   []AIReport
+)
+
+// addReport appends a new AI event report (capped at 200 entries).
+func addReport(r AIReport) {
+	r.ReportedAt = time.Now()
+	reportsMu.Lock()
+	reports = append(reports, r)
+	if len(reports) > 200 {
+		reports = reports[len(reports)-200:]
+	}
+	reportsMu.Unlock()
 }
 
 func (r *Registry) pruneLoop() {
@@ -154,6 +183,35 @@ func (r *Registry) handleTopology(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
+// POST /api/report/submit — Peer nodes push AI/rule-based threat decisions here
+func handleReportSubmit(w http.ResponseWriter, req *http.Request) {
+	if req.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	var r AIReport
+	if err := json.NewDecoder(req.Body).Decode(&r); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	addReport(r)
+	log.Printf("[COORDINATOR] AI Report: node=%s score=%.1f decision=%s method=%s",
+		r.NodeID, r.Score, r.Decision, r.Method)
+	w.WriteHeader(http.StatusOK)
+}
+
+// GET /api/report — Dashboard fetches the latest AI event reports
+func handleReport(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	reportsMu.RLock()
+	out := make([]AIReport, len(reports))
+	copy(out, reports)
+	reportsMu.RUnlock()
+	_ = json.NewEncoder(w).Encode(map[string]interface{}{"events": out})
+}
+
 func min(a, b int) int {
 	if a < b {
 		return a
@@ -173,6 +231,8 @@ func main() {
 	mux.HandleFunc("/peers", reg.handlePeers)
 	mux.HandleFunc("/api/telemetry", reg.handleTelemetry)
 	mux.HandleFunc("/api/topology", reg.handleTopology)
+	mux.HandleFunc("/api/report/submit", handleReportSubmit)
+	mux.HandleFunc("/api/report", handleReport)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, "ok")
 	})

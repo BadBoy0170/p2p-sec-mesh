@@ -3,63 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Observability Flow | SOC Dashboard</title>
+    <title>Mesh Topology · SOC</title>
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    
+
     <!-- Top Navigation Bar -->
     <nav class="top-nav">
         <div class="nav-brand">
-            <h1>Zero-Trust Topology Flow</h1>
+            <h1>Zero-Trust Mesh</h1>
         </div>
         <div class="nav-search">
-            <input type="text" id="search-input" placeholder="🔍 Filter applications..." style="background: transparent; border: none; color: inherit; width: 100%; outline: none; font-family: inherit;">
+            <input type="text" id="search-input" placeholder="filter nodes...">
         </div>
     </nav>
 
     <div class="app-container">
-        <!-- Main Canvas (Left side) -->
+        <!-- Main Canvas -->
         <main class="network-canvas" id="network-container"></main>
 
         <!-- Right Sidebar -->
         <aside class="sidebar">
             <header class="sidebar-header">
-                <h2>Visibility</h2>
+                <h2>Overview</h2>
                 <div class="sync-status" id="sync-indicator">
-                    <span class="status-dot"></span> Live
+                    <span class="status-dot"></span> live
                 </div>
             </header>
 
             <div class="stats-container">
                 <div class="stat-card">
-                    <div class="stat-info">
-                        <div class="stat-label">Applications Monitored</div>
-                    </div>
-                    <div class="stat-value large" id="stat-total">0</div>
+                    <div class="stat-label">Nodes</div>
+                    <div class="stat-value" id="stat-total">0</div>
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-info">
-                        <div class="stat-label">Healthy Streams</div>
-                    </div>
+                    <div class="stat-label">Healthy</div>
                     <div class="stat-value text-success" id="stat-healthy">0</div>
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-info">
-                        <div class="stat-label">Active AI Detections</div>
-                    </div>
+                    <div class="stat-label">Anomalies</div>
                     <div class="stat-value text-warning" id="stat-threats">0</div>
                 </div>
 
                 <div class="stat-card">
-                    <div class="stat-info">
-                        <div class="stat-label">Quarantined Assets</div>
-                    </div>
+                    <div class="stat-label">Quarantined</div>
                     <div class="stat-value text-danger" id="stat-quarantined">0</div>
+                </div>
+            </div>
+
+            <!-- AI Events Report Panel -->
+            <div class="report-section">
+                <div class="report-header">
+                    <span>AI Events</span>
+                    <span class="report-count" id="report-count">0</span>
+                </div>
+                <div class="report-feed" id="report-feed">
+                    <div class="report-empty">no events yet</div>
                 </div>
             </div>
         </aside>
