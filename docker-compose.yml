@@ -51,8 +51,10 @@ x-node-base: &node-base
   environment:
     P2P_PORT:        "9000"
     COORDINATOR_URL: "http://coordinator:8090"
-    CERT_FILE:       "/etc/certs/peer.pem"
-    KEY_FILE:        "/etc/certs/peer.key"
+    # Base environment sets default cert paths, which are overridden
+    # by each node to point to their unique certs.
+    CERT_FILE:       "/etc/certs/cert.pem"
+    KEY_FILE:        "/etc/certs/key.pem"
     CA_FILE:         "/etc/certs/ca.pem"
   depends_on:
     coordinator:
@@ -85,13 +87,15 @@ services:
     container_name: ollama
     networks:
       - mesh
-    ports:
-      - "11434:11434"
+    # GAP-10: No host port binding — Ollama is internal-only.
+    # AI sidecars reach it via the mesh network as http://ollama:11434.
+    # Exposing 11434 to the host would let any local process bypass the
+    # sidecar's sanitization layer and query the LLM with unsanitized input.
     volumes:
       - ollama_data:/root/.ollama
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-sf", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 10s
       timeout: 5s
       retries: 12
@@ -139,8 +143,8 @@ services:
       P2P_PORT:      "9000"
       COORDINATOR_URL: "http://coordinator:8090"
       SIDECAR_ADDR:  "node-a-sidecar:50052"
-      CERT_FILE:     "/etc/certs/peer.pem"
-      KEY_FILE:      "/etc/certs/peer.key"
+      CERT_FILE:     "/etc/certs/node-a/cert.pem"
+      KEY_FILE:      "/etc/certs/node-a/key.pem"
       CA_FILE:       "/etc/certs/ca.pem"
     depends_on:
       coordinator:
@@ -168,8 +172,8 @@ services:
       P2P_PORT:      "9000"
       COORDINATOR_URL: "http://coordinator:8090"
       SIDECAR_ADDR:  "node-b-sidecar:50052"
-      CERT_FILE:     "/etc/certs/peer.pem"
-      KEY_FILE:      "/etc/certs/peer.key"
+      CERT_FILE:     "/etc/certs/node-b/cert.pem"
+      KEY_FILE:      "/etc/certs/node-b/key.pem"
       CA_FILE:       "/etc/certs/ca.pem"
     depends_on:
       coordinator:
@@ -197,8 +201,8 @@ services:
       P2P_PORT:      "9000"
       COORDINATOR_URL: "http://coordinator:8090"
       SIDECAR_ADDR:  "node-c-sidecar:50052"
-      CERT_FILE:     "/etc/certs/peer.pem"
-      KEY_FILE:      "/etc/certs/peer.key"
+      CERT_FILE:     "/etc/certs/node-c/cert.pem"
+      KEY_FILE:      "/etc/certs/node-c/key.pem"
       CA_FILE:       "/etc/certs/ca.pem"
     depends_on:
       coordinator:
@@ -226,8 +230,8 @@ services:
       P2P_PORT:      "9000"
       COORDINATOR_URL: "http://coordinator:8090"
       SIDECAR_ADDR:  "node-d-sidecar:50052"
-      CERT_FILE:     "/etc/certs/peer.pem"
-      KEY_FILE:      "/etc/certs/peer.key"
+      CERT_FILE:     "/etc/certs/node-d/cert.pem"
+      KEY_FILE:      "/etc/certs/node-d/key.pem"
       CA_FILE:       "/etc/certs/ca.pem"
     depends_on:
       coordinator:
@@ -255,8 +259,8 @@ services:
       P2P_PORT:      "9000"
       COORDINATOR_URL: "http://coordinator:8090"
       SIDECAR_ADDR:  "node-e-sidecar:50052"
-      CERT_FILE:     "/etc/certs/peer.pem"
-      KEY_FILE:      "/etc/certs/peer.key"
+      CERT_FILE:     "/etc/certs/node-e/cert.pem"
+      KEY_FILE:      "/etc/certs/node-e/key.pem"
       CA_FILE:       "/etc/certs/ca.pem"
     depends_on:
       coordinator:

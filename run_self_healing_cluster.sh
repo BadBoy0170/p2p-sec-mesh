@@ -3,32 +3,32 @@
 # 30-Node Zero-Trust Security Mesh: The Self-Healing Cluster
 # -----------------------------------------------------------------------------
 
-echo "🧹 Cleaning up old processes..."
+echo "Cleaning up old processes..."
 pkill -f "peer-node" 2>/dev/null
 pkill -f "app.py" 2>/dev/null
 pkill -f "coordinator" 2>/dev/null
 sleep 2
 
-echo "🔨 Building latest Go binaries..."
-cd /Users/badboy17/p2p-sec-mesh
+echo "Building latest Go binaries..."
+cd /Users/badboy17/Downloads/Github/p2p-sec-mesh
 go build -o /tmp/peer-node ./peer-node
 go build -o /tmp/coordinator-bin ./coordinator
 
 mkdir -p /tmp/mesh-logs
 rm -f /tmp/mesh-logs/*.log
 
-echo "🚀 Starting Coordinator and Web Dashboard..."
+echo "Starting Coordinator and Web Dashboard..."
 COORDINATOR_PORT=8090 /tmp/coordinator-bin > /tmp/mesh-logs/coordinator.log 2>&1 &
 sleep 2
 
-echo "🧠 Starting AI Sidecar..."
-cd /Users/badboy17/p2p-sec-mesh/analyzer
+echo "Starting AI Sidecar..."
+cd /Users/badboy17/Downloads/Github/p2p-sec-mesh/analyzer
 source venv/bin/activate
 SIDECAR_PORT=50051 OLLAMA_URL=http://localhost:11434 OLLAMA_MODEL=dolphin-llama3 python3 app.py > "/tmp/mesh-logs/sidecar.log" 2>&1 &
 sleep 3
 
-echo "🌐 Booting Massive 30-Node P2P Cluster..."
-cd /Users/badboy17/p2p-sec-mesh
+echo "Booting Massive 30-Node P2P Cluster..."
+cd /Users/badboy17/Downloads/Github/p2p-sec-mesh
 
 for i in {1..30}; do
   NODE_ID="node-worker-${i}"
@@ -51,23 +51,23 @@ done
 
 echo ""
 echo "==========================================================================="
-echo "🌍 30-NODE CLUSTER IS LIVE"
+echo "30-NODE CLUSTER IS LIVE"
 echo "Open your browser to: http://localhost:8090"
 echo "==========================================================================="
 echo ""
-echo "⏳ Waiting 15 seconds for the network to stabilize..."
+echo "Waiting 15 seconds for the network to stabilize..."
 sleep 15
 
 # Pick a target (e.g. node 14)
 TARGET_NODE="node-worker-14"
 TARGET_PORT=$((2220 + 14))
 
-echo "💥 INITIATING SUPPLY CHAIN ATTACK ON ${TARGET_NODE}..."
+echo "INITIATING SUPPLY CHAIN ATTACK ON ${TARGET_NODE}..."
 echo "Hacker is scanning the internal network..."
 echo 'SCAN' | nc -w 1 localhost $TARGET_PORT
 
 echo ""
-echo "🤖 Auto-Healing Orchestrator is now actively monitoring the network..."
+echo "Auto-Healing Orchestrator is now actively monitoring the network..."
 echo "Press Ctrl+C to stop the simulation."
 
 # Auto-healing loop
@@ -88,17 +88,17 @@ print('')
 ")
 
   if [ -n "$QUARANTINED_NODE" ]; then
-    echo "🚨 ORCHESTRATOR ALERT: Detected compromised and quarantined node -> $QUARANTINED_NODE"
+    echo "ORCHESTRATOR ALERT: Detected compromised and quarantined node -> $QUARANTINED_NODE"
     
     # 1. Kill the infected process
-    echo "🔪 Assassinating infected process ($QUARANTINED_NODE)..."
+    echo "Assassinating infected process ($QUARANTINED_NODE)..."
     pkill -f "NODE_ID=$QUARANTINED_NODE"
     
     sleep 3
     
     # 2. Spin up a replacement!
     REPLICA_ID="${QUARANTINED_NODE}-REPLICA"
-    echo "🌱 Spinning up pristine replacement: $REPLICA_ID..."
+    echo "Spinning up pristine replacement: $REPLICA_ID..."
     
     # Assign a random high port so it doesn't conflict
     NEW_P2P=$((10000 + $RANDOM % 1000))
@@ -113,7 +113,7 @@ print('')
     SIDECAR_ADDR=localhost:50051 \
     /tmp/peer-node > "/tmp/mesh-logs/${REPLICA_ID}.log" 2>&1 &
     
-    echo "✅ Healing complete. Watch the dashboard to see $REPLICA_ID wire into the mesh."
+    echo "Healing complete. Watch the dashboard to see $REPLICA_ID wire into the mesh."
     
     # Break so we don't infinitely spawn replicas (for demo purposes)
     break

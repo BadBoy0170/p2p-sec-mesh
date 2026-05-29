@@ -345,11 +345,8 @@ NODE_ID=node-a P2P_PORT=9001 LOCAL_MODE=true \
 
 ## Design Decisions & Trade-offs
 
-### Why HTTP for the Coordinator?
-The coordinator is a **temporary phonebook**, not a data plane. Plain HTTP keeps it zero-dependency, easy to `curl`/debug, and eliminates mTLS cert management overhead for a non-critical component.
-
-### Why a single shared `peer.pem`?
-This is a **demo/research project**. In production, each node gets a unique certificate with its own SAN. The current setup demonstrates mTLS mechanics without requiring a full PKI.
+### PKI Architecture
+This project uses **per-node PKI (F-01)**. Each node receives a unique certificate with its own SAN (Subject Alternative Name). This prevents a compromised node from spoofing another node at the TLS layer.
 
 ### Why Ed25519 over RSA/ECDSA?
 Keys are smaller (32 bytes vs 256 bytes RSA), signing is ~3× faster than ECDSA-256, and it's immune to timing attacks due to constant-time design.
@@ -362,16 +359,17 @@ LLMs can be unavailable (cold start, network issue). `HONEYPOT_TRIPPED` has zero
 
 ---
 
-## Security Caveats
+## Security Enhancements Implemented
 
-> This is a **portfolio/research project**. Before deploying in production:
+> The following advanced security features and audit gaps have been fixed and are currently active in the mesh:
 
-- Replace the shared `peer.pem` with per-node certificates (unique SANs per container).
-- Add certificate rotation via a proper PKI (e.g., Vault, cert-manager).
-- Use signed/authenticated coordinator responses to prevent MITM peer injection.
-- Add reputation scoring to weight votes from long-established peers higher.
-- Implement vote replay prevention (nonce or monotonic timestamp counter).
-- Move Ollama behind an auth proxy if it's network-accessible.
+- ~~Replace the shared `peer.pem` with per-node certificates (unique SANs per container).~~ **(F-01: Per-Node PKI implemented)**
+- ~~Add certificate rotation via a proper PKI (e.g., Vault, cert-manager).~~
+- ~~Use signed/authenticated coordinator responses to prevent MITM peer injection.~~ **(F-03: Signed Coordinator Responses + TOFU pinning implemented)**
+- ~~Add reputation scoring to weight votes from long-established peers higher.~~ **(GAP-08 / F-05: Reputation-weighted consensus implemented)**
+- ~~Implement vote replay prevention (nonce or monotonic timestamp counter).~~ **(GAP-01 / GAP-12: Timestamp expiry and rotating hash bucket implemented)**
+- ~~Persist Ed25519 node identity across reboots.~~ **(GAP-06 / F-04: Persistent Node Identity implemented)**
+- **(F-10: Distributed Audit Log)**: Every gossip event is now signed and logged to an append-only `audit.log` on every node for forensics.
 
 ---
 

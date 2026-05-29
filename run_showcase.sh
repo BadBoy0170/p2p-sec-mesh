@@ -5,26 +5,26 @@
 # -----------------------------------------------------------------------------
 
 # Cleanup any old runs
-echo "🧹 Cleaning up old processes..."
+echo "Cleaning up old processes..."
 pkill -f "peer-node" 2>/dev/null
 pkill -f "app.py" 2>/dev/null
 pkill -f "coordinator" 2>/dev/null
 sleep 2
 
 echo "🔨 Building latest Go binary..."
-cd /Users/badboy17/p2p-sec-mesh
+cd /Users/badboy17/Downloads/Github/p2p-sec-mesh
 go build -o /tmp/peer-node ./peer-node
 
 # Create logs directory
 mkdir -p /tmp/mesh-logs
 rm -f /tmp/mesh-logs/*.log
 
-echo "🚀 Starting Coordinator and Web Dashboard..."
+echo "Starting Coordinator and Web Dashboard..."
 COORDINATOR_PORT=8090 /tmp/coordinator-bin > /tmp/mesh-logs/coordinator.log 2>&1 &
 sleep 2
 
-echo "🧠 Starting 5 AI Sidecars (Connecting to Ollama)..."
-cd /Users/badboy17/p2p-sec-mesh/analyzer
+echo "Starting 5 AI Sidecars (Connecting to Ollama)..."
+cd /Users/badboy17/Downloads/Github/p2p-sec-mesh/analyzer
 source venv/bin/activate
 
 for i in {1..5}; do
@@ -33,8 +33,8 @@ for i in {1..5}; do
 done
 sleep 3
 
-echo "🌐 Starting 5 P2P Microservice Nodes..."
-cd /Users/badboy17/p2p-sec-mesh
+echo "Starting 5 P2P Microservice Nodes..."
+cd /Users/badboy17/Downloads/Github/p2p-sec-mesh
 
 NAMES=("api-gateway" "auth-service" "transaction-engine" "profile-service" "notification-service")
 
@@ -78,7 +78,7 @@ echo "Run this command:"
 echo ""
 echo "    echo 'SCAN' | nc -w 1 localhost 2224"
 echo ""
-echo "📺 THE VISUAL DASHBOARD:"
+echo "THE VISUAL DASHBOARD:"
 echo "Open your web browser to: http://localhost:8090"
 echo "You will see the network graph reacting in real-time!"
 echo ""
